@@ -22,7 +22,7 @@ Agent = DDPGAgent(11, 1)
 Reward = ContrastiveAdaptiveReward()
 
 NUM_EPISODE = 4000
-NUM_STEP = 30
+NUM_STEP = 25
 EPSILON_START = 1.0
 EPSILON_END = 0.02
 EPSILON_DECAY = 10000
@@ -30,8 +30,6 @@ REWARD_BUFFER = np.empty(shape=NUM_EPISODE)
 
 
 def getVisionPos():
-    # plt.ion()  # 开启交互模式
-    # fig, ax = plt.subplots()
     actor_losses, critic_losses, reward_list, policy_entropies, step, z_list = [], [], [], [], [], []
     out = False
     for episode_i in range(NUM_EPISODE):
@@ -68,10 +66,6 @@ def getVisionPos():
             error, _, _ = Agent.compute_error(state, action, total_reward, next_state, done_episode)
             Agent.replay_buffer.add_memo(state, action, total_reward, next_state, done_episode, error)
             state = next_state
-            # print(state)
-            # if reward < 0 or terminate:
-            #     episode_reward = -episode_reward
-            # else:
             step_i = step_i + 1
             episode_reward += total_reward
             # episode_reward = np.log(1 + episode_reward)
@@ -82,11 +76,6 @@ def getVisionPos():
                 actor_loss_list.append(actor_loss)
                 critic_loss_list.append(critic_loss)
                 episode_entropy += policy_entropy
-            # print(f"Episode: {episode_i + 1}, Reward: {round(episode_reward, 2)}, Critic_loss: {critic_loss}"
-            #       f", Actor_loss: {actor_loss}")
-            # print(f"Episode: {episode_i + 1}, Reward: {round(episode_reward, 2)}, Action: {action}")
-            # print(next_state, reward, done)
-            # print(episode_reward)
             if done and terminate:
                 episode_reward -= 0.02 * step_i
                 break
@@ -145,11 +134,4 @@ if __name__ == "__main__":
     np.savetxt(current_path + f'/reward/ddpg_reward_00.txt', reward)
     np.savetxt(current_path + f'/reward/ddpg_actor_loss_00.txt', actor_loss)
     np.savetxt(current_path + f'/reward/ddpg_critic_loss_00.txt', critic_loss)
-    # np.savetxt(current_path + f'/reward/ddpg_step_1-11_sj3.txt', step)
-    # policy_entropy_cpu = [item.detach().cpu().numpy() if isinstance(item, torch.Tensor) else item
-    #                       for item in policy_entropy]
-    # policy_entropy_array = np.array(policy_entropy_cpu)
-    # np.savetxt(current_path + f'/reward/ddpg_policy_entropy_1-11_sj3.txt', policy_entropy_array)
-    # np.savetxt(current_path + f'/reward/ddpg_z_1-11_sj3.txt', z)
 
-    # self.reset()
