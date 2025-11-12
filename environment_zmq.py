@@ -14,20 +14,11 @@ CAMERA = "kinect"
 JOINT_NAME = "joint"
 SCENE_CONTROLLER_NAME = "SceneController"
 
-# функция возвращает минимальную и максимальную координаты сочленения
 JOINT_RANGE_FUNC_NAME = "getJointRange"
 
-# функция случайно расставляет объекты и возвращающая угол сектора целевого объекта
 RESET_FUNC_NAME = "resetItems"
 
-# количество управляемых кинематических пар
 JOINT_COUNT = 7
-
-file_path_t = 'Thumb.txt'
-file_path_i = 'Index.txt'
-file_path_m = 'Middle.txt'
-file_path_r = 'Ring.txt'
-file_path_l = 'Little.txt'
 
 class Robot():
 
@@ -46,7 +37,7 @@ class Robot():
             './object1', './object2', './object3', './object4', './object5', './object6', './object7'
             , './object8', './object9', './object10', './object11'
             # './test1', './test2', './test3'
-            # , './test4', './test5', './test6', './test7', './test8', './test9'
+            # , './test4', './test5', './test6', './test7', './test8', './test9', './test10', './tes11'
         ]
         self.Angle_thumb = [0, 0]
         self.Angle_index = [0, 0]
@@ -61,7 +52,7 @@ class Robot():
         self.joint_ranges = np.zeros((JOINT_COUNT, 2), dtype=np.float32)
         # self.default_arm_pos = np.asarray([1.328, -26.197, -2.626, -75.971, -1.517, -49.807, 2.008])
         self.default_arm_pos = [0.073, 0.093, 0.083, 0.11, 0.063, 0.065, 0.063, 0.063, 0.063, 0.113, 0.063,
-                                0.074, 0.063, 0.105, 0.06, 0.063, 0.064, 0.093, 0.069, 0.06]
+                                0.074, 0.063, 0.105, 0.06, 0.063, 0.064, 0.093, 0.069, 0.06, 0.09, 0.063]
         self.scene_controller = 0
         self.stereo_matcher = cv2.StereoBM_create(numDisparities=48, blockSize=11)
         self.default_hand_pos = np.asarray([50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
@@ -74,7 +65,7 @@ class Robot():
             [0.518, -6.675, 0.076], [0.638, -6.675, 0.114], [0.765, -6.675, 0.078],
             [-0.250, -6.975, 0.03], [-0.120, -6.975, 0.07], [0.01, -6.975, 0.0525], [0.1, -6.975, 0.1],
             [0.2, -6.975, 0.0465], [0.32, -6.975, 0.12], [0.46, -6.975, 0.05], [0.6, -6.975, 0.017],
-            [0.8, -6.975, 0.023]
+            [0.8, -6.975, 0.023], [0.725, -6.38, 0.05], [0.525, -6.355, 0.09]
         ]  # 替换为物体1的初始位置 4:50,6:51,9:-23,10:115,11:60
         self.grasp_obj_pos = [
             [0.256, -5.064, 0.1], [0.263, -5.049, 0.083], [0.263, -5.064, 0.11], [0.263, -5.064, 0.13],
@@ -82,7 +73,7 @@ class Robot():
             [0.256, -5.064, 0.076], [0.245, -5.064, 0.112], [0.2552, -5.066, 0.078],
             [0.26, -5.074, 0.113], [0.263, -5.064, 0.07], [0.256, -5.064, 0.119], [0.263, -5.072, 0.1],
             [0.257, -5.064, 0.103], [0.259, -5.067, 0.12], [0.255, -5.060, 0.116], [0.269, -5.072, 0.1],
-            [0.2556, -5.074, 0.1033]
+            [0.2556, -5.074, 0.1033], [0.2746, -5.0675, 0.12], [0.263, -5.073, 0.09]
         ]
         self.grasp_obj_ori = [
             [3.14, 0, -1.57], [0, 1.57, 1.57], [0.094, -0.112, -2.421], [0, 0, 0],
@@ -90,24 +81,17 @@ class Robot():
             [0, 0, -0.401], [3.14, 0, 2.006], [0, 0, 1.099],
             [1.57, 0.5, 0], [0, 0, -1.57], [0, 0, -1.57], [0, 0, 0],
             [0, 0, 0], [0, -0.1634, 1.465], [0, -1.57, 0], [1.941, 1.06, -0.3506],
-            [-3.0946, 1.2, -1.558]
+            [-3.0946, 1.2, -1.558], [1.57, 0.872, 1.57], [1.57, -0.523, 1.57]
         ] #-1.57, -0.926, 1.57
         self.w = np.array([-1, -0.01, 0.1, 0.2, 0.5, 1])
-        # self.force_threshold = [
-        #     [0.01, 0.1, 1.5, 10], [0.1, 0.5, 2.5, 10], [0.05, 0.15, 0.25, 0.7], [0.05, 0.15, 0.25, 0.7],
-        #     [0.1, 1, 1.5, 3], [0.1, 0.7, 3.5, 10], [0.1, 0.8, 3, 10], [0.1, 0.8, 2, 3],
-        #     [0.01, 0.075, 0.25, 5], [0.01, 0.15, 0.3, 0.6], [0.1, 8, 12.5, 20],
-        #     [0.05, 0.15, 0.4, 5], [0.01, 0.1, 0.2, 0.5], [0.1, 0.8, 2.5, 5], [0.1, 0.8, 1.1, 2.5],
-        #     [0.1, 0.5, 3, 10], [0.01, 0.3, 0.6, 0.9], [0.1, 1.2, 3.5, 10], [0.1, 1, 2.5, 10],
-        #     [0.05, 0.15, 0.25, 0.7]
-        # ]
+
         self.force_threshold = [
             [0.1, 0.8, 1.1, 1.6], [0.1, 2, 4, 7.5], [0.05, 0.25, 0.4, 0.7], [0.1, 0.45, 0.7, 1.1],
             [0.1, 0.45, 0.7, 1.2], [0.1, 5, 8, 12], [0.1, 1.5, 2.5, 4.5], [0.1, 1.5, 2.5, 4.5],
             [0.01, 0.45, 0.8, 1.2], [0.1, 1, 1.3, 2.1], [1, 35, 45, 75],
             [0.05, 0.15, 0.35, 0.7], [0.01, 0.1, 0.2, 0.5], [0.1, 0.8, 1.5, 2.5], [0.1, 0.8, 1.1, 2.5],
             [0.1, 0.5, 1.1, 2.2], [0.01, 0.3, 0.6, 0.9], [0.1, 1.2, 2, 3], [0.1, 1, 2.4, 3.5],
-            [0.05, 0.15, 0.25, 0.7]
+            [0.05, 0.15, 0.25, 0.7], [0.05, 0.15, 0.4, 3], [0.1, 0.45, 0.7, 1.2]
         ]
 
         self.Theta = 27
@@ -417,33 +401,17 @@ class Robot():
                 cv2.putText(self.img, 'yellow', (x_y, y_y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
         # 食指角度
-        # while self.hand_joints[3] is None or self.hand_joints[4] is None:
-        #     self.get_all_handles()
         Angle_index = self.get_color_angle(self.img, self.depth, contours_purple, T_ec, file_path_i, self.hand_joints[3],
                                            self.hand_joints[4], 'purple', [0, 0])
-        # print(f"i:{self.Angle_index}")
         # 中指角度
-        # Angle_middle = self.get_color_angle(self.img, self.depth, contours_orange, T_ec, file_path_m, self.hand_joints[5],
-        #                                     self.hand_joints[6], 'cyan', [10, 10])
-        Angle_middle = Angle_index
-        # print(f"m:{self.Angle_middle}")
+        Angle_middle = self.get_color_angle(self.img, self.depth, contours_orange, T_ec, file_path_m, self.hand_joints[5],
+                                            self.hand_joints[6], 'cyan', [10, 10])
         # 无名指角度
-        # print(f"r:{self.hand_joints[7], self.hand_joints[8]}")
-        # if self.hand_joints[7] is None or self.hand_joints[8] is None:
-        #     self.get_all_handles()
-        # while self.hand_joints[7] is None or self.hand_joints[8] is None:
-        #     self.get_all_handles()
-        # Angle_ring = self.get_color_angle(self.img, self.depth, contours_green, T_ec, file_path_r, self.hand_joints[7],
-        #                                   self.hand_joints[8], 'green', [0, 0])
-
+        Angle_ring = self.get_color_angle(self.img, self.depth, contours_green, T_ec, file_path_r, self.hand_joints[7],
+                                          self.hand_joints[8], 'green', [0, 0])
         # 小指角度
-        # print(contours_blue, self.hand_joints[9], self.hand_joints[10])
-        # if self.hand_joints[9] is None or self.hand_joints[10] is None:
-        #     self.get_all_handles()
         Angle_little = self.get_color_angle(self.img, self.depth, contours_blue, T_ec, file_path_l, self.hand_joints[9],
                                             self.hand_joints[10], 'blue', [0, 0])
-        Angle_ring = Angle_little
-        # print(f"l:{self.Angle_little}")
 
         return self.Angle_thumb, Angle_index, Angle_middle, Angle_ring, Angle_little
 
@@ -515,46 +483,22 @@ class Robot():
         pos_1[2] = -1000
         time.sleep(1)
         sim.setObjectPosition(self.objects[self.res], pos_1, sim.handle_world)
-        # for k, object_handle in enumerate(self.objects):
-        #     pos = self.default_obj_pos[k]
-        #     pos_1 = pos
-        #     pos_1[2] = -1000
-        #     sim.setObjectPosition(object_handle, pos_1, sim.handle_world)  # [0.362, -5.066, 0.076]
-        #     sim.setObjectOrientation(object_handle, self.grasp_obj_ori[k], sim.handle_world)
         sim.setObjectPosition(self.bottom, [0.453, -5.090, 0.02], sim.handle_world)
         self.get_all_handles()
-        # print(len(self.hand_joints))
         # 机械手关节复位
         for i, joint_handle in enumerate(self.hand_joints):
             self.set_position(joint_handle, self.default_hand_pos[i] * np.pi / 180)
 
-        # # robotic arm reset
-        # sim.setObjectPosition(self.target_pos, [0.106, -4.8, 0.2], sim.handle_world)
-        # time.sleep(5)
         sim.setObjectPosition(self.target_pos, [0.106, -5.015, self.default_arm_pos[self.z]],
                               sim.handle_world)  # robotic arm reset
         time.sleep(2)
-        # if self.z == 10 or self.z == 6 or self.z == 7:
-        #     pos = self.default_obj_pos[self.z]
-        #     pos_1 = pos
-        #     pos_1[2] = -1000
-        #     sim.setObjectPosition(self.objects[self.z], pos_1, sim.handle_world)
-        #     time.sleep(1)
-        #     sim.setObjectPosition(self.objects[self.z], pos, sim.handle_world)  # [0.362, -5.066, 0.076]
-        #     sim.setObjectOrientation(self.objects[self.z], self.grasp_obj_ori[self.z], sim.handle_world)
-        # 选择抓握物体
 
         if self.z == 2 or self.z == 3 or self.z == 5 or self.z == 6 or self.z == 7\
-                or self.z == 11 or self.z == 13 or self.z == 15 or self.z == 17 or self.z == 18 or self.z == 19:
+                or self.z == 11 or self.z == 13 or self.z == 15 or self.z == 17 or self.z == 18 or self.z == 19 or self.z == 20:
             sim.setObjectPosition(self.bottom, [0.283, -5.090, 0.015], sim.handle_world)
         time.sleep(4)
         sim.setObjectPosition(self.objects[self.z], self.grasp_obj_pos[self.z], sim.handle_world)
         sim.setObjectOrientation(self.objects[self.z], self.grasp_obj_ori[self.z], sim.handle_world)
-
-        # time.sleep(3)
-        # sim.setObjectPosition(self.target_pos, [0.076, -5.015, self.default_arm_pos[self.z]], sim.handle_world)
-        # time.sleep(5)
-
 
         time.sleep(2)
 
@@ -592,8 +536,6 @@ class Robot():
         done = False
         done_episode = False
         thresh_bool_t = 0
-        # force_t, force_i, force_m, force_r, force_l = self.get_tactile_feedback()
-
 
         if not (self.initial_w[1] == 1):
             new_angle_i = self.apply_action(self.hand_joints[3], self.hand_joints[4], 1, action, 68 / 75, 0, 1.308)
@@ -620,9 +562,6 @@ class Robot():
             new_angle_t = self.apply_action(self.hand_joints[1], self.hand_joints[2], 0, 0, 32 / 30, 0, 0.523)
 
         force_t, force_i, force_m, force_r, force_l, theta = self.get_tactile_feedback()
-        # print(force_t, force_i, force_m, force_r, force_l)
-        # print(force_t,force_i)
-        # reward_t, w_t = self.set_reward(self.force_t, self.objects[self.z], force_t)
         if 0 <= force_t <= self.force_threshold[self.z][0]:
             w_t = self.w[1]
         elif self.force_threshold[self.z][1] < force_t < self.force_threshold[self.z][2]:
@@ -631,8 +570,6 @@ class Robot():
             cos = np.cos(theta[0])
             w_t += 0.2 * cos  # 当对齐时为0.2，反向为-0.2，梯度清晰
         elif self.force_threshold[self.z][2] <= force_t <= self.force_threshold[self.z][3]:
-            # and (2.2 <= reward <= 3.5)
-            # w_t = self.w[4]
             w_t = force_t / ((self.force_threshold[self.z][2] + self.force_threshold[self.z][3]) / 2)
             cos = np.cos(theta[0])
             w_t += 0.2 * cos  # 当对齐时为0.2，反向为-0.2，梯度清晰
@@ -677,9 +614,6 @@ class Robot():
         elif high_obj < 0.05 or np.abs(obj1 - self.grasp_obj_pos[self.z][0]) > 0.1 or np.abs(obj2 - self.grasp_obj_pos[self.z][1]) > 0.1:
             terminate = True
             done_episode = True
-            # terminate = False
-            # sim.setObjectPosition(self.objects[self.z], self.grasp_obj_pos[self.z], sim.handle_world)
-            # sim.setObjectOrientation(self.objects[self.z], self.grasp_obj_ori[self.z], sim.handle_world)
         else:
             terminate = False
         count = sum([thresh_bool_t == 1, thresh_bool_i == 1, thresh_bool_m == 1, thresh_bool_r == 1, thresh_bool_l == 1])
@@ -701,36 +635,11 @@ class Robot():
                 done_episode = True
             # self.arm_move(-0.2)
             # time.sleep(4)
-        # print(reward)
 
-        # if not (done_t and done_i and done_m and done_r and done_l):
-        #     done = False
-        # if self.synchronous:
-        #     self._step_simulation()
-        # self.current_step += 1
-        # # 如果距离目标位置的距离小于容差，表示达到了目标状态
-        # if high_obj >= 0.16:
-        #     done = True
-        #     reward = reward * self.w[6]
-        # # 如果当前步数达到最大步数，表示超时
-        # elif self.current_step >= 12:
-        #     done = True
-        # else:
-        #     done = False
         return next_state, reward, done, terminate, done_episode
 
     def set_reward(self, object_A, object_B, force, theta):
-        # obs, reward, terminate = self.set_reward(action)
-        # obs = self.get_state()
-        # force_t, force_i, force_m, force_r, force_l = self.get_tactile_feedback()
-        # force_forward = 10
         thresh_bool = 0
-        # dis_A = sim.getObjectPosition(object_A, sim.handle_world)
-        # dis_B = sim.getObjectPosition(object_B, sim.handle_world)
-        # dis_A = np.array(dis_A)
-        # dis_B = np.array(dis_B)
-
-        # reward = np.sqrt(np.square(dis_A[0] - dis_B[0]) + np.square(dis_A[1] - dis_B[1])) * 100
 
         if 0 <= force <= self.force_threshold[self.z][0]:
             omega = self.w[1]
@@ -740,26 +649,17 @@ class Robot():
             cos = np.cos(theta)
             omega += 0.2 * cos  # 当对齐时为0.2，反向为-0.2，梯度清晰
         elif self.force_threshold[self.z][2] <= force <= self.force_threshold[self.z][3]:
-            # and (2.2 <= reward <= 3.5)
-            # omega = self.w[4]
             omega = force / ((self.force_threshold[self.z][2] + self.force_threshold[self.z][3]) / 2)
             cos = np.cos(theta)
             omega += 0.2 * cos  # 当对齐时为0.2，反向为-0.2，梯度清晰
             thresh_bool = 1
-            # elif self.force_threshold[self.z][3] < force < self.force_threshold[self.z][3] * 1.1:
-        #     omega = self.w[0] * 0.5
-        # reward = reward * w
         elif force > self.force_threshold[self.z][3]:
             omega = -force / ((self.force_threshold[self.z][2] + self.force_threshold[self.z][3])/2)
         else:
             # omega = self.w[2]
             omega = force / ((self.force_threshold[self.z][2] + self.force_threshold[self.z][3]) / 2)
-        # elif (0.1 < force <= 0.5) and (3.5 <= reward < 4):
-        #     omega = self.w[2]
-        # if 0 <= np.abs(force_t - force_forward) <= 1:
-        #     omiga = 1
-        #self.w = np.array([-1, 0, 0.3, 0.5, 0.7, 1, 3])
 
         return omega, thresh_bool
+
 
 
