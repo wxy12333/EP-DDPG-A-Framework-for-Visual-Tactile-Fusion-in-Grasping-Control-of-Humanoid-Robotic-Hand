@@ -1,8 +1,3 @@
-# DDPG for Pendulum-v1 control problem: agent
-# Born time: 2023-12-26
-# Latest update: 2023-12-26
-# Dylan
-
 import numpy as np
 import torch
 import torch.nn as nn
@@ -18,12 +13,12 @@ import prioritized_memory as Memory
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Using device: ", device)
 
-LR_ACTOR = 3e-5
-LR_CRITIC = 3e-4
+LR_ACTOR = 1e-4
+LR_CRITIC = 1e-3
 GAMMA = 0.99
-TAU = 0.002
+TAU = 0.005
 MEMORY_SIZE = 100000
-batch_size = 128
+batch_size = 64
 
 
 class OUNoise:
@@ -99,31 +94,6 @@ class Critic(nn.Module):
         x = torch.relu(self.fc2(x))
         return self.fc3(x)
 
-
-# Replay Buffer
-# class ReplayMemory:
-#     def __init__(self, capacity):  # 构造函数
-#         self.buffer = deque(maxlen=capacity)  # deque是双向队列，可以从两端append和pop
-#
-#     def add_memo(self, state, action, reward, next_state, done):
-#         state = np.expand_dims(state, 0)  # np.expand_dims()是为了增加一个维度，从(3,)变成(1,3)
-#         next_state = np.expand_dims(next_state, 0)
-#         self.buffer.append((state, action, reward, next_state, done))  # 从右端插入
-#         # print(self.buffer)
-#
-#     def sample(self, batch_size):
-#         state, action, reward, next_state, done = zip(*random.sample(self.buffer, batch_size))
-#         # * is to unpack the list; zip is to combine the elements of the tuple
-#         return np.concatenate(state), action, reward, np.concatenate(next_state), done
-#         # '''
-#         # 对state使用 np.concatenate()函数是因为state是一个list，里面的元素是ndarray，所以要把它们拼接起来
-#         # '''
-#
-#     def __len__(self):  # a special method to get the length of the buffer
-#         return len(self.buffer)
-
-
-# 基于对比学习的自适应奖励
 class ContrastiveAdaptiveReward:
     def __init__(self):
         self.base_reward_weight = 1.0
@@ -135,14 +105,6 @@ class ContrastiveAdaptiveReward:
     def calculate_contrastive_reward(self, reward, entropy_bonus, episode):
         self.base_reward_weight = 1.0  # 或者根据任务需求稍微调大
         self.entropy_weight = max(0.0, self.initial_entropy_weight * math.exp(-self.decay_rate * episode))
-        # 动态调整对比学习权重
-        # contrastive_weight = max(0.1, 0.3 * math.exp(-self.contrastive_decay_rate * episode))
-        # contrastive_weight = 0.2
-
-        # 对比学习差异
-        # state = torch.FloatTensor(state) if not isinstance(state, torch.Tensor) else state
-        # next_state = torch.FloatTensor(next_state) if not isinstance(next_state, torch.Tensor) else next_state
-        # contrastive_reward = contrastive_weight * F.mse_loss(state, next_state)
         total_reward = (self.base_reward_weight * reward +
                         self.entropy_weight * entropy_bonus
                         )
@@ -152,22 +114,12 @@ class ContrastiveAdaptiveReward:
 # DDPG Agent
 class DDPGAgent:
     def __init__(self, state_dim, action_dim, initial_alpha=0.5, decay_rate=0.1):
-        # current_path = os.path.dirname(os.path.realpath(__file__))
-        # model = current_path + '/models/'
-        # actor_path = model + 'ddpg_actor_20241012141120.pth'
-        # critic_path = model + 'ddpg_critic_20241012141120.pth'
         self.actor = Actor(state_dim, action_dim).to(device)  # move nn to device
-        # self.actor.eval()
-        # self.actor.load_state_dict(torch.load(actor_path))
-        # self.actor.train()  # 设置为训练模式
         self.actor_target = Actor(state_dim, action_dim).to(device)  # same structure as actor
         self.actor_target.load_state_dict(self.actor.state_dict())  # copy the current nn's weights of actor
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=LR_ACTOR)  # retrieves the parameters
 
         self.critic = Critic(state_dim, action_dim).to(device)
-        # self.critic.eval()
-        # self.critic.load_state_dict(torch.load(critic_path))
-        # self.critic.train()  # 设置为训练模式
         self.critic_target = Critic(state_dim, action_dim).to(device)
         self.critic_target.load_state_dict(self.critic.state_dict())
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=LR_CRITIC)
@@ -185,11 +137,7 @@ class DDPGAgent:
         state = torch.FloatTensor(state).unsqueeze(0).to(device)  # unsqueeze(0) add a dimension from (3,) to (1,3)
         action = self.actor(state)
         action = add_noise(action)
-        return action.detach().cpu().numpy()[0]  # detach the tensor from the current graph and convert it to numpy
-        #'''
-        #.cpu() is a method that moves a tensor from GPU memory to CPU memory.
-        # This is useful if you want to perform operations on the tensor using NumPy on the CPU.
-        # '''
+        return action.detach().cpu().numpy()[0]  
 
     def update_alpha(self, episode):
         # 动态调整熵系数，随着episode的增加逐渐衰减
@@ -227,8 +175,6 @@ class DDPGAgent:
 
         td_errors, current_Q, target_Q = self.compute_error(states, actions, rewards, next_states, dones)
         td_errors = td_errors.mean(axis=1)
-        # self.error = td_errors.detach().cpu().numpy()
-        # self.error = abs(self.error).item()
         critic_loss = (is_weights * nn.SmoothL1Loss(reduction='none')(current_Q, target_Q)).mean()
         # critic_loss = nn.SmoothL1Loss()(current_Q, target_Q.detach()) #Smooth L1的损失值更新方法
         self.critic_optimizer.zero_grad()  # .zero_grad() clears old gradients from the last step
@@ -263,3 +209,4 @@ class DDPGAgent:
         # print(critic_loss, actor_loss)
 
         return critic_loss, actor_loss, policy_entropy
+
